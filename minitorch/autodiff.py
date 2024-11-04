@@ -1,5 +1,6 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, Tuple
 
 from typing_extensions import Protocol
 
@@ -7,7 +8,7 @@ from typing_extensions import Protocol
 # Central Difference calculation
 
 
-def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) -> Any:
+def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-7) -> Any:
     r"""
     Computes an approximation to the derivative of `f` with respect to one arg.
 
@@ -22,7 +23,9 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    temp_vals = list(vals)
+    temp_vals[arg] += epsilon
+    return (f(*temp_vals) - f(*vals)) / epsilon
 
 
 variable_count = 1
@@ -60,7 +63,21 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    used = defaultdict(bool)
+    res = []
+
+    def dfs(var: Variable) -> None:
+        if var.is_constant():
+            res.append(var)
+            return
+        used[var.unique_id] = True
+        for next_var in var.parents:
+            if not used[next_var.unique_id]:
+                dfs(next_var)
+        res.append(var)
+
+    dfs(variable)
+    return reversed(res)
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -74,7 +91,20 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    graph = topological_sort(variable)
+    derivatives = defaultdict(int)
+    derivatives[variable.unique_id] = deriv
+
+    for variable in graph:
+        if variable.is_constant():
+            continue
+
+        derivative = derivatives[variable.unique_id]
+        if variable.is_leaf():
+            variable.accumulate_derivative(derivative)
+        else:
+            for next_var, next_deriv in variable.chain_rule(derivative):
+                derivatives[next_var.unique_id] += next_deriv
 
 
 @dataclass
